@@ -6,16 +6,13 @@ if [ -n "${BASH_VERSION}" ]; then
     : ${omg_ungit_prompt:=$PS1}
     : ${omg_second_line:='\w • '}
 
-    : ${omg_is_a_git_repo_symbol:=''}
-    : ${omg_has_untracked_files_symbol:=''}        #                ?    
-    : ${omg_has_adds_symbol:=''}
-    : ${omg_has_deletions_symbol:=''}
-    : ${omg_has_cached_deletions_symbol:=''}
-    : ${omg_has_modifications_symbol:=''}
-    : ${omg_has_cached_modifications_symbol:=''}
+    : ${omg_is_a_git_repo_symbol:=''} #    
+    : ${omg_adds_symbol:=''}        #                ?     
+    : ${omg_dels_symbol:=''} # 
+    : ${omg_sets_symbol:=''} # 
+    : ${omg_action_symbol:=''}
     : ${omg_ready_to_commit_symbol:=''}            #   →
     : ${omg_is_on_a_tag_symbol:=''}                #   
-    : ${omg_needs_to_merge_symbol:='ᄉ'}
     : ${omg_detached_symbol:=''}
     : ${omg_can_fast_forward_symbol:=''}
     : ${omg_has_diverged_symbol:=''}               #   
@@ -23,10 +20,7 @@ if [ -n "${BASH_VERSION}" ]; then
     : ${omg_rebase_tracking_branch_symbol:=''}     #   
     : ${omg_merge_tracking_branch_symbol:=''}      #  
     : ${omg_should_push_symbol:=''}                #    
-    : ${omg_has_stashes_symbol:=''}
-
-    : ${omg_default_color_on='\[\033[1;37m\]'}
-    : ${omg_default_color_off='\[\033[0m\]'}
+    : ${omg_stashes_symbol:=''}
 
     PROMPT='$(build_prompt)'
     RPROMPT='%{$reset_color%}%T %{$fg_bold[white]%} %n@%m%{$reset_color%}'
@@ -34,10 +28,8 @@ if [ -n "${BASH_VERSION}" ]; then
     function enrich_append {
         local flag=$1
         local symbol=$2
-        local color=${3:-$omg_default_color_on}
-        if [[ $flag == false ]]; then symbol=' '; fi
-
-        echo -n "${color}${symbol}  "
+        local color=$3
+        if [[ $flag == true ]]; then echo -n "${color} ${symbol} "; fi
     }
 
     function custom_build_prompt {
@@ -48,12 +40,12 @@ if [ -n "${BASH_VERSION}" ]; then
         local detached=${5}
         local just_init=${6}
         local has_upstream=${7}
-        local has_modifications=${8}
-        local has_modifications_cached=${9}
-        local has_adds=${10}
-        local has_deletions=${11}
-        local has_deletions_cached=${12}
-        local has_untracked_files=${13}
+        local number_of_untracked_sets=${8}
+        local number_of_cached_sets=${9}
+        local number_of_cached_adds=${10}
+        local number_of_untracked_dels=${11}
+        local number_of_cached_dels=${12}
+        local number_of_untracked_adds=${13}
         local ready_to_commit=${14}
         local tag_at_current_commit=${15}
         local is_on_a_tag=${16}
@@ -64,6 +56,7 @@ if [ -n "${BASH_VERSION}" ]; then
         local should_push=${21}
         local will_rebase=${22}
         local has_stashes=${23}
+        local action=${24}
 
         local prompt=""
         local original_prompt=$PS1
@@ -88,81 +81,117 @@ if [ -n "${BASH_VERSION}" ]; then
         local background_purple='\e[45m'
         local background_cyan='\e[46m'
         local background_white='\e[47m'
-        
+
         local reset='\e[0m'     # Text Reset]'
 
-        local black_on_white="${black}${background_white}"
-        local yellow_on_white="${yellow}${background_white}"
-        local red_on_white="${red}${background_white}"
-        local red_on_black="${red}${background_black}"
-        local black_on_red="${black}${background_red}"
-        local white_on_red="${white}${background_red}"
-        local yellow_on_red="${yellow}${background_red}"
+        local theme_filesystem_arrow_color=$white
+        local theme_filesystem_front_color=$black
+        local theme_filesystem_stash_color=$yellow
+        local theme_filesystem_untracked_color=$cyan
+        local theme_filesystem_cached_color=$green
+        local theme_filesystem_next_color=$red
+        local theme_filesystem_back_color=$background_white
 
+        local theme_action_arrow_color=$red
+        local theme_action_front_color=$white
+        local theme_action_back_color=$background_red
 
-        # Flags
-        local omg_default_color_on="${black_on_white}"
+        local theme_branch_arrow_color=$green
+        local theme_branch_front_color=$black
+        local theme_branch_back_color=$background_green
+
+        local theme_tag_arrow_color=$yellow
+        local theme_tag_front_color=$black
+        local theme_tag_back_color=$background_yellow
 
         if [[ $is_a_git_repo == true ]]; then
+            local arrow_color=$theme_filesystem_arrow_color
+            local front_color=$theme_filesystem_front_color
+            local back_color=$theme_filesystem_back_color
+
             # on filesystem
-            prompt="${black_on_white} "
-            prompt+=$(enrich_append $is_a_git_repo $omg_is_a_git_repo_symbol "${black_on_white}")
-            prompt+=$(enrich_append $has_stashes $omg_has_stashes_symbol "${yellow_on_white}")
+            prompt="${front_color}${back_color} $omg_is_a_git_repo_symbol "
 
-            prompt+=$(enrich_append $has_untracked_files $omg_has_untracked_files_symbol "${red_on_white}")
-            prompt+=$(enrich_append $has_modifications $omg_has_modifications_symbol "${red_on_white}")
-            prompt+=$(enrich_append $has_deletions $omg_has_deletions_symbol "${red_on_white}")
-            
+            if [[ $number_of_stashes -gt 0 ]]; then prompt+=$(enrich_append true "${omg_stashes_symbol} ${number_of_stashes}" "${theme_filesystem_stash_color}${back_color}"); fi
 
-            # ready
-            prompt+=$(enrich_append $has_adds $omg_has_adds_symbol "${black_on_white}")
-            prompt+=$(enrich_append $has_modifications_cached $omg_has_cached_modifications_symbol "${black_on_white}")
-            prompt+=$(enrich_append $has_deletions_cached $omg_has_cached_deletions_symbol "${black_on_white}")
-            
+            if [[ $number_of_untracked_sets -gt 0 ]]; then prompt+=$(enrich_append true "${omg_sets_symbol} ${number_of_untracked_sets}" "${theme_filesystem_untracked_color}${back_color}"); fi
+            if [[ $number_of_untracked_dels -gt 0 ]]; then prompt+=$(enrich_append true "${omg_dels_symbol} ${number_of_untracked_dels}" "${theme_filesystem_untracked_color}${back_color}"); fi
+            if [[ $number_of_untracked_adds -gt 0 ]]; then prompt+=$(enrich_append true "${omg_adds_symbol} ${number_of_untracked_adds}" "${theme_filesystem_untracked_color}${back_color}"); fi
+            if [[ $number_of_cached_sets -gt 0 ]]; then prompt+=$(enrich_append true "${omg_sets_symbol} ${number_of_cached_sets}" "${theme_filesystem_cached_color}${back_color}"); fi
+            if [[ $number_of_cached_dels -gt 0 ]]; then prompt+=$(enrich_append true "${omg_dels_symbol} ${number_of_cached_dels}" "${theme_filesystem_cached_color}${back_color}"); fi
+            if [[ $number_of_cached_adds -gt 0 ]]; then prompt+=$(enrich_append true "${omg_adds_symbol} ${number_of_cached_adds}" "${theme_filesystem_cached_color}${back_color}"); fi
+
             # next operation
+            prompt+=$(enrich_append $ready_to_commit $omg_ready_to_commit_symbol "${theme_filesystem_next_color}${back_color}")
 
-            prompt+=$(enrich_append $ready_to_commit $omg_ready_to_commit_symbol "${red_on_white}")
-
-            # where
-
-            prompt="${prompt} ${white_on_red} ${black_on_red}"
-            if [[ $detached == true ]]; then
-                prompt+=$(enrich_append $detached $omg_detached_symbol "${white_on_red}")
-                prompt+=$(enrich_append $detached "(${current_commit_hash:0:7})" "${black_on_red}")
-            else            
-                if [[ $has_upstream == false ]]; then
-                    prompt+=$(enrich_append true "-- ${omg_not_tracked_branch_symbol}  --  (${current_branch})" "${black_on_red}")
+            # Actions
+            local action_arrow_color=$theme_action_arrow_color # do not override $arrow_color
+            local front_color=$theme_action_front_color
+            local back_color=$theme_action_back_color
+            action_prompt=""
+            if [[ $detached == false && $has_upstream == true ]]; then
+                if [[ $has_diverged == true ]]; then
+                    action_prompt+=$(enrich_append true "${omg_has_diverged_symbol} ${commits_behind}±${commits_ahead}" ${front_color}${back_color})
                 else
-                    if [[ $will_rebase == true ]]; then
-                        local type_of_upstream=$omg_rebase_tracking_branch_symbol
-                    else
-                        local type_of_upstream=$omg_merge_tracking_branch_symbol
+                    if [[ $commits_behind -gt 0 ]]; then
+                        action_prompt+=$(enrich_append true "${omg_can_fast_forward_symbol} ${commits_behind}" ${front_color}${back_color})
                     fi
-
-                    if [[ $has_diverged == true ]]; then
-                        prompt+=$(enrich_append true "-${commits_behind} ${omg_has_diverged_symbol} +${commits_ahead}" "${white_on_red}")
-                    else
-                        if [[ $commits_behind -gt 0 ]]; then
-                            prompt+=$(enrich_append true "-${commits_behind} ${white_on_red}${omg_can_fast_forward_symbol}${black_on_red} --" "${black_on_red}")
-                        fi
-                        if [[ $commits_ahead -gt 0 ]]; then
-                            prompt+=$(enrich_append true "-- ${white_on_red}${omg_should_push_symbol}${black_on_red}  +${commits_ahead}" "${black_on_red}")
-                        fi
-                        if [[ $commits_ahead == 0 && $commits_behind == 0 ]]; then
-                            prompt+=$(enrich_append true " --   -- " "${black_on_red}")
-                        fi
-                        
+                    if [[ $commits_ahead -gt 0 ]]; then
+                        action_prompt+=$(enrich_append true "${omg_should_push_symbol}  ${commits_ahead}" ${front_color}${back_color})
                     fi
-                    prompt+=$(enrich_append true "(${current_branch} ${type_of_upstream} ${upstream//\/$current_branch/})" "${black_on_red}")
                 fi
             fi
-            prompt+=$(enrich_append ${is_on_a_tag} "${omg_is_on_a_tag_symbol} ${tag_at_current_commit}" "${black_on_red}")
-            prompt+="${red_on_black}${reset}
+            if [ -n "$action" ]; then
+                action_prompt+=$(enrich_append true "${omg_action_symbol} ${action}" ${front_color}${back_color})
+            fi
+
+            if [ -n "$action_prompt" ]; then
+                prompt+="${arrow_color}${back_color}"
+                prompt+="$action_prompt"
+
+                local arrow_color=$action_arrow_color
+            fi
+
+            # branches
+            local front_color=$theme_branch_front_color
+            local back_color=$theme_branch_back_color
+            prompt+="${arrow_color}${theme_branch_back_color}"
+            local arrow_color=$theme_branch_arrow_color
+            if [[ $detached == true ]]; then
+                local branch_name="${current_commit_hash:0:7}"
+                local branch_symbol="${omg_detached_symbol}"
+            else
+                local branch_name=$current_branch
+                if [[ $has_upstream == false ]]; then
+                    local branch_symbol=$omg_not_tracked_branch_symbol
+                else
+                    if [[ $will_rebase == true ]]; then
+                        local branch_symbol=$omg_rebase_tracking_branch_symbol
+                    else
+                        local branch_symbol=$omg_merge_tracking_branch_symbol
+                    fi
+                fi
+            fi
+            if [[ $has_upstream == true ]]; then
+                prompt+=$(enrich_append true "${branch_name} ${branch_symbol} ${upstream//\/$current_branch/}" "${front_color}${back_color}")
+            else
+                prompt+=$(enrich_append true "${branch_name} ${branch_symbol}" "${front_color}${back_color}")
+            fi
+
+            # tag
+            if [[ $is_on_a_tag == true ]]; then
+                local front_color=$theme_tag_front_color
+                local back_color=$theme_tag_back_color
+                prompt+="${arrow_color}${back_color}"
+                local arrow_color=$theme_tag_arrow_color
+                prompt+=$(enrich_append true "${omg_is_on_a_tag_symbol} ${tag_at_current_commit}" "${front_color}${back_color}")
+            fi
+            prompt+="${arrow_color}${background_black}${reset}
 ${omg_second_line}"
         else
             prompt="${omg_ungit_prompt}"
         fi
-        
+
         echo "${prompt}"
     }
 
