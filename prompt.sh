@@ -61,7 +61,6 @@ if [ -n "${BASH_VERSION}" ]; then
         local prompt=""
         local original_prompt=$PS1
 
-
         # foreground
         local black='\e[0;30m'
         local red='\e[0;31m'

@@ -64,18 +64,17 @@ function build_prompt {
             local git_status="$(git status --porcelain 2> /dev/null)"
             local action="$(get_current_action)"
 
-            number_of_untracked_modifications=$($grep -c "^.M " <<< "$git_status")
-            number_of_untracked_deletions=$($grep -c "^.D " <<< "$git_status")
-            number_of_untracked_adds=$($grep -c "^?? " <<< "$git_status")
-            number_of_untracked_changes=$(($number_of_untracked_modifications + $number_of_untracked_deletions + $number_of_untracked_adds))
+            local number_of_untracked_modifications=$($grep -c "^.M " <<< "$git_status")
+            local number_of_untracked_deletions=$($grep -c "^.D " <<< "$git_status")
+            local number_of_untracked_adds=$($grep -c "^?? " <<< "$git_status")
+            local number_of_untracked_changes=$(($number_of_untracked_modifications + $number_of_untracked_deletions + $number_of_untracked_adds))
 
-            number_of_cached_modifications=$($grep -c "^M " <<< "$git_status")
-            number_of_cached_adds=$($grep -c "^A " <<< "$git_status")
-            number_of_cached_deletions=$($grep -c "^D " <<< "$git_status")
-            number_of_cached_changes=$(($number_of_cached_modifications + $number_of_cached_adds + $number_of_cached_deletions))
+            local number_of_cached_modifications=$($grep -c "^M " <<< "$git_status")
+            local number_of_cached_adds=$($grep -c "^A " <<< "$git_status")
+            local number_of_cached_deletions=$($grep -c "^D " <<< "$git_status")
+            local number_of_cached_changes=$(($number_of_cached_modifications + $number_of_cached_adds + $number_of_cached_deletions))
 
             if [[ $number_of_untracked_changes -eq 0 && $number_of_cached_changes -gt 0 ]]; then local ready_to_commit=true; fi
-#            if [[ $number_of_untracked_adds -gt 0 ]]; then local has_untracked_files=true; fi
 
             local tag_at_current_commit=$(git describe --exact-match --tags $current_commit_hash 2> /dev/null)
             if [[ -n $tag_at_current_commit ]]; then local is_on_a_tag=true; fi
