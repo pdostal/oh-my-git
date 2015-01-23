@@ -140,6 +140,24 @@ if [ -n "${BASH_VERSION}" ]; then
                         action_prompt+=$(enrich_append true "${omg_should_push_symbol}  ${commits_ahead}" ${front_color}${back_color})
                     fi
                 fi
+
+                # Display remote branche
+                if [ -n "$action_prompt" ]; then
+                    if [[ $detached == true ]]; then
+                        local branch_symbol="${omg_detached_symbol}"
+                    else
+                        if [[ $has_upstream == false ]]; then
+                            local branch_symbol=$omg_not_tracked_branch_symbol
+                        else
+                            if [[ $will_rebase == true ]]; then
+                                local branch_symbol=$omg_rebase_tracking_branch_symbol
+                            else
+                                local branch_symbol=$omg_merge_tracking_branch_symbol
+                            fi
+                        fi
+                    fi
+                    action_prompt+=$(enrich_append true "$branch_symbol ${upstream//\/$current_branch/}" "${front_color}${back_color}")
+                fi
             fi
             if [ -n "$action" ]; then
                 action_prompt+=$(enrich_append true "${omg_action_symbol} ${action}" ${front_color}${back_color})
@@ -159,24 +177,10 @@ if [ -n "${BASH_VERSION}" ]; then
             local arrow_color=$theme_branch_arrow_color
             if [[ $detached == true ]]; then
                 local branch_name="${current_commit_hash:0:7}"
-                local branch_symbol="${omg_detached_symbol}"
             else
                 local branch_name=$current_branch
-                if [[ $has_upstream == false ]]; then
-                    local branch_symbol=$omg_not_tracked_branch_symbol
-                else
-                    if [[ $will_rebase == true ]]; then
-                        local branch_symbol=$omg_rebase_tracking_branch_symbol
-                    else
-                        local branch_symbol=$omg_merge_tracking_branch_symbol
-                    fi
-                fi
             fi
-            if [[ $has_upstream == true ]]; then
-                prompt+=$(enrich_append true "${branch_name} ${branch_symbol} ${upstream//\/$current_branch/}" "${front_color}${back_color}")
-            else
-                prompt+=$(enrich_append true "${branch_name} ${branch_symbol}" "${front_color}${back_color}")
-            fi
+            prompt+=$(enrich_append true "${branch_name}" "${front_color}${back_color}")
 
             # tag
             if [[ $is_on_a_tag == true ]]; then
